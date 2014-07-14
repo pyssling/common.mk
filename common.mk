@@ -26,7 +26,7 @@ endef
 
 # Joins a list of elements with /'s: a b -> a/b
 define _join_path
-$(if $(1),/$(firstword $(1))$(call join_path,$(call list_tail,$(1))))
+$(if $(1),/$(firstword $(1))$(call _join_path,$(call list_tail,$(1))))
 endef
 
 define join_path
