@@ -1,12 +1,12 @@
 D := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(D)/common.mk
 
-$(D)/a: $(call get_dep,$(D)/subdir1/b) $(d)
-	touch $@
+$(all): $(D)/a
 
 $(call include_dep_makefile,$(D)/subdir1/Makefile)
 
-$(D)_clean:
-	rm -f $(D)/a
+$(D)/a: $(call get_dep,$(D)/subdir1/b) $(d)
+	touch $@
 
-clean: $(D)_clean
+$(clean):
+	rm -f $(D)/a

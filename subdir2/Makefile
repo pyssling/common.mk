@@ -1,10 +1,10 @@
 D := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(D)/../common.mk
 
+$(all): $(D)/c
+
 $(D)/c:
 	touch $@
 
-$(D)_clean:
+$(clean):
 	rm -f $(D)/c
-
-clean: $(D)_clean

@@ -83,6 +83,20 @@ define get_dep
 $(foreach dep,$(1),$(call rel_path,$(dep),$(CURDIR)))
 endef
 
+# Push a word onto a stack
+# var = a, stack = b c -> stack = a b c
+# a,b c-> a b c
+define push
+$(eval $(2) := $(1) $($(2)))
+endef
+
+# Pop a word from a stack
+# var = , stack = a b c -> var = a, stack = b c
+define pop
+$(eval $(1) := $(firstword $($(2)))) \
+$(eval $(2) := $(call list_tail,$($(2))))
+endef
+
 # Rewrites the directory variable to be relative $(CURDIR)
 D := $(call rel_path,$(D),$(CURDIR))
 
@@ -93,13 +107,30 @@ __CUR_MAKEFILE := $(abspath $(lastword $(filter-out $(__COMMON_MK),$(MAKEFILE_LI
 # Append the Makefile to the Makefile list
 __ABS_MAKEFILE_LIST := $(__CUR_MAKEFILE) $(__ABS_MAKEFILE_LIST)
 
+# create variables representing common targets
+all := $(__CUR_MAKEFILE)_all
+clean := $(__CUR_MAKEFILE)_clean
+
+# Ensure that these operate on the correct directories
+$(__CUR_MAKEFILE)_all: D := $(D)
+$(__CUR_MAKEFILE)_clean: D := $(D)
+
+# Connect these to the normal dummy targets
+all: $(all)
+clean: $(clean)
+
+# Make them all phony
+.PHONY: $(all) $(clean) all clean
 
 # Includes a Makefile with dependencies of the current Makefile once.
 # Restores the current directory variable $(D) after.
 define include_dep_makefile
 $(if $(call is_element_in_list,$(abspath $(1)),$(__ABS_MAKEFILE_LIST)),, \
-$(eval __MAKEFILE_DIR_STACK := $(D) $(__MAKEFILE_DIR_STACK)) \
+$(call push,$(D),__MAKEFILE_DIR_STACK) \
+$(call push,$(all),__ALL_STACK) \
+$(call push,$(clean),__CLEAN_STACK) \
 $(eval include $(1)) \
-$(eval D := $(firstword $(__MAKEFILE_DIR_STACK))) \
-$(eval __MAKEFILE_DIR_STACK := $(call list_tail,$(__MAKEFILE_DIR_STACK))))
+$(call pop,all,__ALL_STACK) \
+$(call pop,clean,__CLEAN_STACK) \
+$(call pop,D,__MAKEFILE_DIR_STACK))
 endef
