@@ -10,3 +10,8 @@ d := $(D)/d
 
 $(d):
 	touch $@
+
+$(D)_clean:
+	rm -f $(D)/b $(d)
+
+clean: $(D)_clean
