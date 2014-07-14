@@ -48,7 +48,7 @@ $(if $(call are_eq,$(1),),
 $(call parent_dirs,$(2)),
 $(if $(call are_eq,$(2),),
 $(call, join_path,$(1)),
-$(call join_path,$(call parent_dirs,$(2))$(1))))
+$(call join_path,$(call parent_dirs,$(2)) $(1))))
 endef
 
 
