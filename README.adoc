@@ -1,0 +1,100 @@
+common.mk
+=========
+
+A project to collect Makefile macros and structure for using recursive
+Makefiles in order to prevent recursive make.
+
+For example, a normal recurive make would consist of the following two
+makefiles:
+
+.Makefile
+--------------------
+a: subdir1/b
+	touch $@
+
+subdir1/b:
+	$(MAKE) -C subdir1 b
+--------------------
+
+.subdir1/Makefile
+--------------------
+b: c
+	touch $@
+
+c:
+	touch $@
+--------------------
+
+In this situation make knows that it needs to rebuild +a+ if +b+ has been
+modified, and also how to build +b+ if it does not exist, but does not know
+that +b+ depends on +c+, so will not rebuild +a+ and +b+ once they exist if
++c+ has been updated.
+
+There is extensive literature on this subject, most famously Miller, Peter,
+"Recursive make considered harmful," AUUGN Journal of AUUG Inc 19.1 (1998),
+http://aegis.sourceforge.net/auug97.pdf .
+
+common.mk tries to solve these issues through recursive Makefile inclusion.
+The main insights leading to common.mk are the following:
+
+* All targets must be relative +$(CURDIR)+, the working directory.
+* All targets may only have one path, that is, the path must be canonical.
+* Makefiles must be included only once to avoid overwriting variables
+  and targets.
+
+These insights are implemented through the following extensions of normal
+make (using Makefile macros and variables):
+
+* A special variable +$(D)+ which is defined as the directory of the current
+  Makefile, calculated in the beginning of the Makefile from +$(MAKEFILE_LIST)+,
+  and then rewritten to canonical form by +common.mk+:
+  +D := $(dir $(lastword $(MAKEFILE_LIST)))+
+* A Makefile +common.mk+ which must be included directly after the computation
+  of +$(D)+ relative the current Makefile:
+  +include $(D)/common.mk+
+* A macro for including other Makefiles, +include_dep_makefile+ guaranteeing
+  that these are included only once and that +$(D)+ will be restored after
+  each inclusion:
+  +$(call include_dep_makefile,$(D)/subdir1/Makefile)+
+* A macro for computing the canonical path towards a dependency located in
+  another Makefile, +get_dep+:
+  +$(call get_dep,$(D)/subdir1/b)+
+
+This allows for the construction of recursively included Makefiles as in the
+following example:
+
+.Makefile
+--------------------
+D := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(D)/common.mk
+
+$(D)/a: $(call get_dep,$(D)/subdir1/b) $(c)
+	touch $@
+
+$(call include_dep_makefile,$(D)/subdir1/Makefile)
+
+--------------------
+
+.subdir1/Makefile
+--------------------
+D := $(dir $(lastword $(MAKEFILE_LIST)))
+include $(D)/../common.mk
+
+$(D)/b:
+	touch $@
+
+c := $(D)/d
+$(c):
+	touch $@
+--------------------
+
+As can be seen the target +a+ depends on both +b+ and +c+ in subdir1. It has the
+canonical path to both, for +b+ by calling +$(call get_dep,$(D)/subdir1/b)+ and
+for +c+ by using a variable +$(c)+ exported by +subdir1/Makefile+. Both methods
+of depending on targets defined in other Makefiles work, one is more verbose and
+the other requires attention to namespace pollution in case there are multiple
+targets with similar names.
+
+Notice also the lack of an all target, this is intentional as it is reasonable
+to have an all target in any Makefile, but having an all target may cause
+unnecessary items to be built beyond the dependencies of the top-level Makefile.
