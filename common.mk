@@ -83,6 +83,13 @@ define get_dep
 $(foreach dep,$(1),$(call rel_path,$(dep),$(CURDIR)))
 endef
 
+# Creates a dependency for all headers needed by the objects
+define get_hdrs
+$(foreach obj,$(1),$(obj) \
+$(eval -include $(obj:.o=.d)) \
+$(eval $(obj): CFLAGS += -MD))
+endef
+
 # Push a word onto a stack
 # var = a, stack = b c -> stack = a b c
 # a,b c-> a b c
